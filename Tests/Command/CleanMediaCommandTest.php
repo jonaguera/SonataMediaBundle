@@ -17,6 +17,7 @@ use Sonata\MediaBundle\Model\MediaManagerInterface;
 use Sonata\MediaBundle\Provider\Pool;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Tests\FilesystemTestCase;
@@ -80,7 +81,7 @@ class CleanMediaCommandTest extends TestCase
     {
         parent::setUp();
 
-        $this->container = $this->getMock('Symfony\Component\DependencyInjection\ContainerInterface');
+        $this->container = $this->getMockBuilder('Symfony\Component\DependencyInjection\ContainerInterface')->getMock();
 
         $this->command = new CleanMediaCommand();
         $this->command->setContainer($this->container);
@@ -92,7 +93,7 @@ class CleanMediaCommandTest extends TestCase
 
         $this->pool = $pool = $this->getMockBuilder('Sonata\MediaBundle\Provider\Pool')->disableOriginalConstructor()->getMock();
 
-        $this->mediaManager = $mediaManager = $this->getMock('Sonata\MediaBundle\Model\MediaManagerInterface');
+        $this->mediaManager = $mediaManager = $this->getMockBuilder('Sonata\MediaBundle\Model\MediaManagerInterface')->getMock();
 
         $this->fileSystemLocal = $fileSystemLocal = $this->getMockBuilder('Sonata\MediaBundle\Filesystem\Local')->disableOriginalConstructor()->getMock();
         $this->fileSystemLocal->expects($this->once())->method('getDirectory')->will($this->returnValue($this->workspace));
@@ -167,13 +168,13 @@ class CleanMediaCommandTest extends TestCase
         $this->pool->expects($this->any())->method('getContexts')->will($this->returnValue(array('foo' => $context)));
         $this->pool->expects($this->any())->method('getProviders')->will($this->returnValue(array($provider)));
 
-        $media = $this->getMock('Sonata\MediaBundle\Model\MediaInterface');
+        $media = $this->getMockBuilder('Sonata\MediaBundle\Model\MediaInterface')->getMock();
 
         $this->mediaManager->expects($this->once())->method('findOneBy')
             ->with($this->equalTo(array('id' => 1, 'context' => 'foo')))
             ->will($this->returnValue(array($media)));
         $this->mediaManager->expects($this->once())->method('findBy')
-            ->with($this->equalTo(array('providerReference' => 'qwertz.ext', 'providers' => array('fooprovider'))))
+            ->with($this->equalTo(array('providerReference' => 'qwertz.ext', 'providerName' => array('fooprovider'))))
             ->will($this->returnValue(array($media)));
 
         $output = $this->tester->execute(array('command' => $this->command->getName()));
@@ -201,16 +202,19 @@ class CleanMediaCommandTest extends TestCase
         $this->pool->expects($this->any())->method('getContexts')->will($this->returnValue(array('foo' => $context)));
         $this->pool->expects($this->any())->method('getProviders')->will($this->returnValue(array($provider)));
 
-        $media = $this->getMock('Sonata\MediaBundle\Model\MediaInterface');
+        $media = $this->getMockBuilder('Sonata\MediaBundle\Model\MediaInterface')->getMock();
 
         $this->mediaManager->expects($this->once())->method('findOneBy')
             ->with($this->equalTo(array('id' => 1, 'context' => 'foo')))
             ->will($this->returnValue(array($media)));
         $this->mediaManager->expects($this->once())->method('findBy')
-            ->with($this->equalTo(array('providerReference' => 'qwertz.ext', 'providers' => array('fooprovider'))))
+            ->with($this->equalTo(array('providerReference' => 'qwertz.ext', 'providerName' => array('fooprovider'))))
             ->will($this->returnValue(array($media)));
 
-        $output = $this->tester->execute(array('command' => $this->command->getName(), '--verbose' => true));
+        $output = $this->tester->execute(
+            array('command' => $this->command->getName()),
+            array('verbosity' => OutputInterface::VERBOSITY_VERBOSE)
+        );
 
         $this->assertOutputFoundInContext(
             '/Context: foo\s+(.+)\s+done!/ms',
@@ -245,7 +249,7 @@ class CleanMediaCommandTest extends TestCase
             ->with($this->equalTo(array('id' => 1, 'context' => 'foo')))
             ->will($this->returnValue(array()));
         $this->mediaManager->expects($this->once())->method('findBy')
-            ->with($this->equalTo(array('providerReference' => 'qwertz.ext', 'providers' => array('fooprovider'))))
+            ->with($this->equalTo(array('providerReference' => 'qwertz.ext', 'providerName' => array('fooprovider'))))
             ->will($this->returnValue(array()));
 
         $output = $this->tester->execute(array('command' => $this->command->getName(), '--dry-run' => true));
@@ -283,7 +287,7 @@ class CleanMediaCommandTest extends TestCase
             ->with($this->equalTo(array('id' => 1, 'context' => 'foo')))
             ->will($this->returnValue(array()));
         $this->mediaManager->expects($this->once())->method('findBy')
-            ->with($this->equalTo(array('providerReference' => 'qwertz.ext', 'providers' => array('fooprovider'))))
+            ->with($this->equalTo(array('providerReference' => 'qwertz.ext', 'providerName' => array('fooprovider'))))
             ->will($this->returnValue(array()));
 
         $output = $this->tester->execute(array('command' => $this->command->getName()));

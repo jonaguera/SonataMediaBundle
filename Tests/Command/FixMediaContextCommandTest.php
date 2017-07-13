@@ -11,15 +11,15 @@
 
 namespace Sonata\MediaBundle\Tests\Command;
 
-use Sonata\ClassificationBundle\Model\CategoryManagerInterface;
 use Sonata\ClassificationBundle\Model\ContextManagerInterface;
 use Sonata\MediaBundle\Command\FixMediaContextCommand;
+use Sonata\MediaBundle\Model\CategoryManagerInterface;
 use Sonata\MediaBundle\Provider\Pool;
+use Sonata\MediaBundle\Tests\Helpers\PHPUnit_Framework_TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
-use Symfony\Component\Console\Tests\Command\CommandTest;
 
-class FixMediaContextCommandTest extends CommandTest
+class FixMediaContextCommandTest extends PHPUnit_Framework_TestCase
 {
     /**
      * @var \PHPUnit_Framework_MockObject_MockObject|ContainerInterface
@@ -61,7 +61,7 @@ class FixMediaContextCommandTest extends CommandTest
      */
     protected function setUp()
     {
-        $this->container = $this->getMock('Symfony\Component\DependencyInjection\ContainerInterface');
+        $this->container = $this->getMockBuilder('Symfony\Component\DependencyInjection\ContainerInterface')->getMock();
 
         $this->command = new FixMediaContextCommand();
         $this->command->setContainer($this->container);
@@ -73,9 +73,9 @@ class FixMediaContextCommandTest extends CommandTest
 
         $this->pool = $pool = $this->getMockBuilder('Sonata\MediaBundle\Provider\Pool')->disableOriginalConstructor()->getMock();
 
-        $this->contextManger = $contextManger = $this->getMock('Sonata\ClassificationBundle\Model\ContextManagerInterface');
+        $this->contextManger = $contextManger = $this->getMockBuilder('Sonata\ClassificationBundle\Model\ContextManagerInterface')->getMock();
 
-        $this->categoryManger = $categoryManger = $this->getMockBuilder('Sonata\ClassificationBundle\Entity\CategoryManager')->disableOriginalConstructor()->getMock();
+        $this->categoryManger = $categoryManger = $this->createMock('Sonata\MediaBundle\Model\CategoryManagerInterface');
 
         $this->container->expects($this->any())
             ->method('get')
@@ -85,12 +85,22 @@ class FixMediaContextCommandTest extends CommandTest
                         return $pool;
                     case 'sonata.classification.manager.context':
                         return $contextManger;
-                    case 'sonata.classification.manager.category':
+                    case 'sonata.media.manager.category':
                         return $categoryManger;
                 }
 
                 return;
             }));
+    }
+
+    public function testExecuteWithDisabledClassfication()
+    {
+        $this->container->method('has')->with($this->equalTo('sonata.media.manager.category'))
+            ->will($this->returnValue(false));
+
+        $this->setExpectedException('\LogicException');
+
+        $this->tester->execute(array('command' => $this->command->getName()));
     }
 
     public function testExecuteWithExisting()
@@ -101,13 +111,16 @@ class FixMediaContextCommandTest extends CommandTest
             'download' => array(),
         );
 
+        $this->container->method('has')->with($this->equalTo('sonata.media.manager.category'))
+            ->will($this->returnValue(true));
+
         $this->pool->expects($this->any())->method('getContexts')->will($this->returnValue(array('foo' => $context)));
 
-        $contextModel = $this->getMock('Sonata\ClassificationBundle\Model\ContextInterface');
+        $contextModel = $this->getMockBuilder('Sonata\ClassificationBundle\Model\ContextInterface')->getMock();
 
         $this->contextManger->expects($this->once())->method('findOneBy')->with($this->equalTo(array('id' => 'foo')))->will($this->returnValue($contextModel));
 
-        $category = $this->getMock('Sonata\ClassificationBundle\Model\CategoryInterface');
+        $category = $this->getMockBuilder('Sonata\ClassificationBundle\Model\CategoryInterface')->getMock();
 
         $this->categoryManger->expects($this->once())->method('getRootCategory')->with($this->equalTo($contextModel))->will($this->returnValue($category));
 
@@ -126,13 +139,16 @@ class FixMediaContextCommandTest extends CommandTest
             'download' => array(),
         );
 
+        $this->container->method('has')->with($this->equalTo('sonata.media.manager.category'))
+            ->will($this->returnValue(true));
+
         $this->pool->expects($this->any())->method('getContexts')->will($this->returnValue(array('foo' => $context)));
 
-        $contextModel = $this->getMock('Sonata\ClassificationBundle\Model\ContextInterface');
+        $contextModel = $this->getMockBuilder('Sonata\ClassificationBundle\Model\ContextInterface')->getMock();
 
         $this->contextManger->expects($this->once())->method('findOneBy')->with($this->equalTo(array('id' => 'foo')))->will($this->returnValue($contextModel));
 
-        $category = $this->getMock('Sonata\ClassificationBundle\Model\CategoryInterface');
+        $category = $this->getMockBuilder('Sonata\ClassificationBundle\Model\CategoryInterface')->getMock();
 
         $this->categoryManger->expects($this->once())->method('getRootCategory')->with($this->equalTo($contextModel))->will($this->returnValue(null));
         $this->categoryManger->expects($this->once())->method('create')->will($this->returnValue($category));
@@ -153,15 +169,18 @@ class FixMediaContextCommandTest extends CommandTest
             'download' => array(),
         );
 
+        $this->container->method('has')->with($this->equalTo('sonata.media.manager.category'))
+            ->will($this->returnValue(true));
+
         $this->pool->expects($this->any())->method('getContexts')->will($this->returnValue(array('foo' => $context)));
 
-        $contextModel = $this->getMock('Sonata\ClassificationBundle\Model\ContextInterface');
+        $contextModel = $this->getMockBuilder('Sonata\ClassificationBundle\Model\ContextInterface')->getMock();
 
         $this->contextManger->expects($this->once())->method('findOneBy')->with($this->equalTo(array('id' => 'foo')))->will($this->returnValue(null));
         $this->contextManger->expects($this->once())->method('create')->will($this->returnValue($contextModel));
         $this->contextManger->expects($this->once())->method('save')->with($this->equalTo($contextModel));
 
-        $category = $this->getMock('Sonata\ClassificationBundle\Model\CategoryInterface');
+        $category = $this->getMockBuilder('Sonata\ClassificationBundle\Model\CategoryInterface')->getMock();
 
         $this->categoryManger->expects($this->once())->method('getRootCategory')->with($this->equalTo($contextModel))->will($this->returnValue(null));
         $this->categoryManger->expects($this->once())->method('create')->will($this->returnValue($category));

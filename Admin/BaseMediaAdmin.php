@@ -14,9 +14,9 @@ namespace Sonata\MediaBundle\Admin;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Datagrid\ListMapper;
 use Sonata\AdminBundle\Form\FormMapper;
-use Sonata\ClassificationBundle\Model\CategoryManagerInterface;
 use Sonata\CoreBundle\Model\Metadata;
 use Sonata\MediaBundle\Form\DataTransformer\ProviderDataTransformer;
+use Sonata\MediaBundle\Model\CategoryManagerInterface;
 use Sonata\MediaBundle\Provider\Pool;
 
 abstract class BaseMediaAdmin extends AbstractAdmin
@@ -38,7 +38,7 @@ abstract class BaseMediaAdmin extends AbstractAdmin
      * @param Pool                     $pool
      * @param CategoryManagerInterface $categoryManager
      */
-    public function __construct($code, $class, $baseControllerName, Pool $pool, CategoryManagerInterface $categoryManager)
+    public function __construct($code, $class, $baseControllerName, Pool $pool, CategoryManagerInterface $categoryManager = null)
     {
         parent::__construct($code, $class, $baseControllerName);
 
@@ -86,7 +86,7 @@ abstract class BaseMediaAdmin extends AbstractAdmin
 
         $categoryId = $this->getRequest()->get('category');
 
-        if (!$categoryId) {
+        if (null !== $this->categoryManager && !$categoryId) {
             $categoryId = $this->categoryManager->getRootCategory($context)->getId();
         }
 
@@ -106,15 +106,16 @@ abstract class BaseMediaAdmin extends AbstractAdmin
 
         if ($this->hasRequest()) {
             if ($this->getRequest()->isMethod('POST')) {
+                $uniqid = $this->getUniqid();
+
                 if (method_exists('Symfony\Component\HttpFoundation\JsonResponse', 'transformJsonError')) {
                     // NEXT_MAJOR remove this block when dropping sf < 2.8 compatibility
                     $media->setProviderName(
-                        $this->getRequest()->get(sprintf('%s[providerName]', $this->getUniqid()), null, true)
+                        $this->getRequest()->get(sprintf('%s[providerName]', $uniqid), null, true)
                     );
                 } else {
-                    $media->setProviderName(
-                        $this->getRequest()->get($this->getUniqid()['providerName'])
-                    );
+                    $providerParams = $this->getRequest()->get($uniqid);
+                    $media->setProviderName($providerParams['providerName']);
                 }
             } else {
                 $media->setProviderName($this->getRequest()->get('provider'));
@@ -122,7 +123,7 @@ abstract class BaseMediaAdmin extends AbstractAdmin
 
             $media->setContext($context = $this->getRequest()->get('context'));
 
-            if ($categoryId = $this->getPersistentParameter('category')) {
+            if (null !== $this->categoryManager && $categoryId = $this->getPersistentParameter('category')) {
                 $category = $this->categoryManager->find($categoryId);
 
                 if ($category && $category->getContext()->getId() == $context) {
@@ -182,7 +183,12 @@ abstract class BaseMediaAdmin extends AbstractAdmin
             return;
         }
 
-        $formMapper->add('providerName', 'hidden');
+        // NEXT_MAJOR: Keep FQCN when bumping Symfony requirement to 2.8+.
+        $hiddenType = method_exists('Symfony\Component\Form\AbstractType', 'getBlockPrefix')
+            ? 'Symfony\Component\Form\Extension\Core\Type\HiddenType'
+            : 'hidden';
+
+        $formMapper->add('providerName', $hiddenType);
 
         $formMapper->getFormBuilder()->addModelTransformer(new ProviderDataTransformer($this->pool, $this->getClass()), true);
 
@@ -194,12 +200,19 @@ abstract class BaseMediaAdmin extends AbstractAdmin
             $provider->buildCreateForm($formMapper);
         }
 
-        $formMapper->add('category', 'sonata_type_model_list', array(), array(
-            'link_parameters' => array(
-                'context' => $media->getContext(),
-                'hide_context' => true,
-                'mode' => 'tree',
-            ),
-        ));
+        if (null !== $this->categoryManager) {
+            // NEXT_MAJOR: Keep FQCN when bumping Symfony requirement to 2.8+.
+            $modelListType = method_exists('Symfony\Component\Form\AbstractType', 'getBlockPrefix')
+                ? 'Sonata\AdminBundle\Form\Type\ModelListType'
+                : 'sonata_type_model_list';
+
+            $formMapper->add('category', $modelListType, array(), array(
+                'link_parameters' => array(
+                    'context' => $media->getContext(),
+                    'hide_context' => true,
+                    'mode' => 'tree',
+                ),
+            ));
+        }
     }
 }

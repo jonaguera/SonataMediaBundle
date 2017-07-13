@@ -98,6 +98,11 @@ class SonataMediaExtension extends Extension
             $container->removeDefinition('sonata.media.thumbnail.liip_imagine');
         }
 
+        if ($this->isClassificationEnabled($config)) {
+            $loader->load('category.xml');
+            $container->setAlias('sonata.media.manager.category', $config['category_manager']);
+        }
+
         if (!array_key_exists($config['default_context'], $config['contexts'])) {
             throw new \InvalidArgumentException(sprintf('SonataMediaBundle - Invalid default context : %s, available : %s', $config['default_context'], json_encode(array_keys($config['contexts']))));
         }
@@ -113,10 +118,6 @@ class SonataMediaExtension extends Extension
 
         $pool = $container->getDefinition('sonata.media.pool');
         $pool->replaceArgument(0, $config['default_context']);
-
-        // this shameless hack is done in order to have one clean configuration
-        // for adding formats ....
-        $pool->addMethodCall('__hack__', $config);
 
         $strategies = array();
 
@@ -277,7 +278,7 @@ class SonataMediaExtension extends Extension
             ),
         ));
 
-        if (interface_exists('Sonata\ClassificationBundle\Model\CategoryInterface')) {
+        if ($this->isClassificationEnabled($config)) {
             $collector->addAssociation($config['class']['media'], 'mapManyToOne', array(
                 'fieldName' => 'category',
                 'targetEntity' => $config['class']['category'],
@@ -545,6 +546,19 @@ class SonataMediaExtension extends Extension
             'Sonata\\MediaBundle\\Twig\\Node\\PathNode',
             'Sonata\\MediaBundle\\Twig\\Node\\ThumbnailNode',
         ));
+    }
+
+    /**
+     * Checks if the classification of media is enabled.
+     *
+     * @param array $config
+     *
+     * @return bool
+     */
+    private function isClassificationEnabled(array $config)
+    {
+        return interface_exists('Sonata\ClassificationBundle\Model\CategoryInterface')
+            && !$config['force_disable_category'];
     }
 
     /**
